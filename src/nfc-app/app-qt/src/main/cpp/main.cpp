@@ -33,6 +33,7 @@
 #include <sdr/SignalType.h>
 #include <sdr/RecordDevice.h>
 #include <sdr/AirspyDevice.h>
+#include <sdr/MiriDevice.h>
 #include <sdr/RealtekDevice.h>
 
 #include <nfc/AdaptiveSamplingTask.h>
@@ -352,6 +353,123 @@ int startTest3(int argc, char *argv[])
    return 0;
 }
 
+int startTest4(int argc, char *argv[])
+{
+   Logger log {"main"};
+
+   log.info("***********************************************************************");
+   log.info("NFC laboratory, 2021 Jose Vicente Campos Martinez - <josevcm@gmail.com>");
+   log.info("***********************************************************************");
+
+   char file[128];
+   struct tm timeinfo {};
+
+   std::time_t rawTime = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+   localtime_s(&timeinfo, &rawTime);
+   strftime(file, sizeof(file), "record-%Y%m%d%H%M%S.wav", &timeinfo);
+
+   // open first available receiver
+   for (const auto &name: sdr::MiriDevice::listDevices())
+   {
+      // create receiver
+      sdr::MiriDevice receiver(name);
+
+      // default parameters
+      receiver.setCenterFreq(13.56E6);
+      receiver.setSampleRate(10000000);
+      receiver.setGainMode(sdr::MiriDevice::Manual);
+      receiver.setGainValue(8);
+      receiver.setMixerAgc(0);
+      receiver.setTunerAgc(0);
+      receiver.setTestMode(0);
+
+      // try to open Miri
+      if (receiver.open(sdr::SignalDevice::Read))
+      {
+         log.info("device {} connected!", {name});
+
+         for (auto gain: receiver.supportedSampleRates())
+         {
+            log.info("available sample rate {} = {}", {gain.first, gain.second});
+         }
+
+         for (auto gain: receiver.supportedGainValues())
+         {
+            log.info("available gain {} = {}", {gain.first, gain.second});
+         }
+
+         sdr::RecordDevice recorder(file);
+
+         recorder.setChannelCount(2);
+         recorder.setSampleRate(receiver.sampleRate());
+         recorder.open(sdr::RecordDevice::Write);
+
+         // open recorder
+         if (recorder.open(sdr::RecordDevice::OpenMode::Write))
+         {
+            log.info("start streaming for device {}", {receiver.name()});
+
+            // signal stream queue buffer
+            rt::BlockingQueue<sdr::SignalBuffer> signalQueue;
+
+            // start receive stream
+            receiver.start([&signalQueue](sdr::SignalBuffer &buffer) {
+               signalQueue.add(buffer);
+            });
+
+            int count = 0;
+
+            while (auto buffer = signalQueue.get(-1))
+            {
+               if (++count == 100)
+                  break;
+
+               if (!buffer->isEmpty())
+               {
+                  recorder.write(buffer.value());
+
+//                  int samples = buffer->elements() / buffer->stride();
+//
+//                  // convert I/Q samples to Real sample
+//                  sdr::SignalBuffer result(samples * 3, 3, buffer->sampleRate(), 0, 0, 0);
+//
+//                  switch (buffer->type())
+//                  {
+//                     case sdr::SignalType::SAMPLE_IQ:
+//                     {
+//                        buffer->stream([&result](const float *value, int stride) {
+//                           result.put(value[0]).put(value[1]).put(sqrtf(value[0] * value[0] + value[1] * value[1]));
+//                        });
+//                        break;
+//                     }
+//
+//                     case sdr::SignalType::SAMPLE_REAL:
+//                     {
+//                        buffer->stream([&result](const float *value, int stride) {
+//                           result.put(value[0]).put(0.0f).put(0.0f);
+//                        });
+//                        break;
+//                     }
+//                  }
+//
+//                  result.flip();
+//
+//                  recorder.write(result);
+               }
+            }
+
+            receiver.close();
+
+            log.info("stop streaming for device {}", {receiver.name()});
+         }
+
+         log.info("capture finished");
+      }
+   }
+
+   return 0;
+}
+
 int startApp(int argc, char *argv[])
 {
    Logger log {"main"};
@@ -402,6 +520,7 @@ int main(int argc, char *argv[])
 //   return startTest1(argc, argv);
 //   return startTest2(argc, argv);
 //   return startTest3(argc, argv);
-   return startApp(argc, argv);
+   return startTest4(argc, argv);
+//   return startApp(argc, argv);
 }
 

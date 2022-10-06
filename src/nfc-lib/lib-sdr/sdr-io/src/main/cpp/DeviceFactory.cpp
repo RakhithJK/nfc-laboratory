@@ -23,6 +23,7 @@
 */
 
 #include <sdr/AirspyDevice.h>
+#include <sdr/MiriDevice.h>
 #include <sdr/RealtekDevice.h>
 #include <sdr/DeviceFactory.h>
 
@@ -50,6 +51,9 @@ RadioDevice *DeviceFactory::newInstance(const std::string &name)
 
    if (name.rfind("rtlsdr://", 0) == 0)
       return new RealtekDevice(name);
+
+   if (name.rfind("miri://", 0) == 0)
+      return new MiriDevice(name);
 
    //   if (name.startsWith("lime://"))
 //      return new LimeDevice(name, parent);

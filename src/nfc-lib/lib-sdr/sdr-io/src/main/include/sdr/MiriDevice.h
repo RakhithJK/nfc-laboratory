@@ -41,10 +41,12 @@ class MiriDevice : public RadioDevice
 
       enum GainMode
       {
-         Auto = 0, Linearity = 1, Sensitivity = 2
+         Auto = 0, Manual = 1
       };
 
    public:
+
+      explicit MiriDevice(int fd);
 
       explicit MiriDevice(const std::string &name);
 

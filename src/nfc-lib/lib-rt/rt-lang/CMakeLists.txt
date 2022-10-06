@@ -13,7 +13,7 @@ add_library(rt-lang STATIC
         )
 
 #target_compile_definitions(rt-lang PRIVATE LOG_OUTPUT=0) # NONE
-#target_compile_definitions(rt-lang PRIVATE LOG_OUTPUT=1) # buffered STDOUT
+target_compile_definitions(rt-lang PRIVATE LOG_OUTPUT=1) # buffered STDOUT
 #target_compile_definitions(rt-lang PRIVATE LOG_OUTPUT=2) # unbuffered STDERR
 #target_compile_definitions(rt-lang PRIVATE LOG_OUTPUT=3) # buffered FILE
 
