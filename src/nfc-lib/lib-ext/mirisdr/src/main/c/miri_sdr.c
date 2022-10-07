@@ -122,9 +122,9 @@ static void mirisdr_callback(unsigned char *buf, uint32_t len, void *ctx)
 
 int main(int argc, char **argv)
 {
-#if !defined (_WIN32) || defined(__MINGW32__)
-	struct sigaction sigact;
-#endif
+//#if !defined (_WIN32) || defined(__MINGW32__)
+//	struct sigaction sigact;
+//#endif
 	char *filename = NULL;
 	int n_read;
 	int r, opt;
@@ -261,17 +261,18 @@ int main(int argc, char **argv)
 
 	mirisdr_set_hw_flavour(dev, hw_flavour);
 
-#if !defined (_WIN32) || defined(__MINGW32__)
-	sigact.sa_handler = sighandler;
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = 0;
-	sigaction(SIGINT, &sigact, NULL);
-	sigaction(SIGTERM, &sigact, NULL);
-	sigaction(SIGQUIT, &sigact, NULL);
-	sigaction(SIGPIPE, &sigact, NULL);
-#else
-	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
-#endif
+//#if !defined (_WIN32) || defined(__MINGW32__)
+//	sigact.sa_handler = sighandler;
+//	sigemptyset(&sigact.sa_mask);
+//	sigact.sa_flags = 0;
+//	sigaction(SIGINT, &sigact, NULL);
+//	sigaction(SIGTERM, &sigact, NULL);
+//	sigaction(SIGQUIT, &sigact, NULL);
+//	sigaction(SIGPIPE, &sigact, NULL);
+//#else
+//	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
+//#endif
+
 	count = mirisdr_get_tuner_gains(dev, NULL);
 	fprintf(stderr, "Supported gain values (%d): ", count);
 

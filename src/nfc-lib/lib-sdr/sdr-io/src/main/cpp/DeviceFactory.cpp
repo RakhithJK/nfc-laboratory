@@ -41,6 +41,10 @@ std::vector<std::string> DeviceFactory::deviceList()
    for (const auto &entry: sdr::RealtekDevice::listDevices())
       devices.push_back(entry);
 
+   // add MiriSDR devices
+   for (const auto &entry: sdr::MiriDevice::listDevices())
+      devices.push_back(entry);
+
    return devices;
 }
 

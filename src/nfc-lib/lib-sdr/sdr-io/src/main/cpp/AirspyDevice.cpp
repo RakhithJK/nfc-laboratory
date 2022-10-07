@@ -58,10 +58,9 @@ struct AirspyDevice::Impl
    int decimation = 0;
    int streamTime = 0;
 
-   int airspyResult = 0;
-   airspy_device *airspyHandle = nullptr;
-   airspy_read_partid_serialno_t airspySerial {};
-   airspy_sample_type airspySample = AIRSPY_SAMPLE_FLOAT32_IQ;
+   int deviceResult = 0;
+   airspy_device *deviceHandle = nullptr;
+   airspy_read_partid_serialno_t deviceSerial {};
 
    std::mutex streamMutex;
    std::queue<SignalBuffer> streamQueue;
@@ -138,30 +137,30 @@ struct AirspyDevice::Impl
          uint64_t sn = std::stoull(deviceName.substr(9), nullptr, 16);
 
          // open Airspy device
-         airspyResult = airspy_open_sn(&handle, sn);
+         deviceResult = airspy_open_sn(&handle, sn);
       }
 
-      if (airspyResult == AIRSPY_SUCCESS)
+      if (deviceResult == AIRSPY_SUCCESS)
       {
-         airspyHandle = handle;
+         deviceHandle = handle;
 
          char tmp[128];
 
          // get version string
-         if ((airspyResult = airspy_version_string_read(handle, tmp, sizeof(tmp))) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_version_string_read: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_version_string_read(handle, tmp, sizeof(tmp))) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_version_string_read: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          // disable bias tee
-         if ((airspyResult = airspy_set_rf_bias(handle, 0)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_rf_bias: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_set_rf_bias(handle, 0)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_rf_bias: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          // read board serial
-         if ((airspyResult = airspy_board_partid_serialno_read(handle, &airspySerial)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_board_partid_serialno_read: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_board_partid_serialno_read(handle, &deviceSerial)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_board_partid_serialno_read: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          // set sample type
-         if ((airspyResult = airspy_set_sample_type(handle, airspySample)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_sample_type: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_set_sample_type(handle, AIRSPY_SAMPLE_FLOAT32_IQ)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_sample_type: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          // set version string
          deviceVersion = std::string(tmp);
@@ -183,14 +182,14 @@ struct AirspyDevice::Impl
          return true;
       }
 
-      log.warn("failed airspy_open_sn: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+      log.warn("failed airspy_open_sn: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
       return false;
    }
 
    void close()
    {
-      if (airspyHandle)
+      if (deviceHandle)
       {
          // stop streaming if active...
          stop();
@@ -198,18 +197,18 @@ struct AirspyDevice::Impl
          log.info("close device {}", {deviceName});
 
          // close device
-         if ((airspyResult = airspy_close(airspyHandle)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_close: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_close(deviceHandle)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_close: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          deviceName = "";
          deviceVersion = "";
-         airspyHandle = nullptr;
+         deviceHandle = nullptr;
       }
    }
 
    int start(RadioDevice::StreamHandler handler)
    {
-      if (airspyHandle)
+      if (deviceHandle)
       {
          log.info("start streaming for device {}", {deviceName});
 
@@ -222,17 +221,17 @@ struct AirspyDevice::Impl
          streamQueue = std::queue<SignalBuffer>();
 
          // start reception
-         if ((airspyResult = airspy_start_rx(airspyHandle, reinterpret_cast<airspy_sample_block_cb_fn>(process_transfer), this)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_start_rx: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_start_rx(deviceHandle, reinterpret_cast<airspy_sample_block_cb_fn>(process_transfer), this)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_start_rx: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          // clear callback to disable receiver
-         if (airspyResult != AIRSPY_SUCCESS)
+         if (deviceResult != AIRSPY_SUCCESS)
             streamCallback = nullptr;
 
          // sets stream start time
          streamTime = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return -1;
@@ -240,20 +239,20 @@ struct AirspyDevice::Impl
 
    int stop()
    {
-      if (airspyHandle && streamCallback)
+      if (deviceHandle && streamCallback)
       {
          log.info("stop streaming for device {}", {deviceName});
 
          // stop reception
-         if ((airspyResult = airspy_stop_rx(airspyHandle)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_stop_rx: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_stop_rx(deviceHandle)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_stop_rx: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
          // disable stream callback and queue
          streamCallback = nullptr;
          streamQueue = std::queue<SignalBuffer>();
          streamTime = 0;
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return -1;
@@ -261,36 +260,36 @@ struct AirspyDevice::Impl
 
    bool isOpen() const
    {
-      return airspyHandle;
+      return deviceHandle;
    }
 
    bool isEof() const
    {
-      return !airspyHandle || !airspy_is_streaming(airspyHandle);
+      return !deviceHandle || !airspy_is_streaming(deviceHandle);
    }
 
    bool isReady() const
    {
       char version[1];
 
-      return airspyHandle && airspy_version_string_read(airspyHandle, version, sizeof(version)) == AIRSPY_SUCCESS;
+      return deviceHandle && airspy_version_string_read(deviceHandle, version, sizeof(version)) == AIRSPY_SUCCESS;
    }
 
    bool isStreaming() const
    {
-      return airspyHandle && airspy_is_streaming(airspyHandle);
+      return deviceHandle && airspy_is_streaming(deviceHandle);
    }
 
    int setCenterFreq(long value)
    {
       centerFreq = value;
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
-         if ((airspyResult = airspy_set_freq(airspyHandle, centerFreq)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_freq: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_set_freq(deviceHandle, centerFreq)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_freq: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return 0;
@@ -300,12 +299,12 @@ struct AirspyDevice::Impl
    {
       sampleRate = value;
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
-         if ((airspyResult = airspy_set_samplerate(airspyHandle, sampleRate)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_samplerate: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_set_samplerate(deviceHandle, sampleRate)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_samplerate: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return 0;
@@ -315,17 +314,17 @@ struct AirspyDevice::Impl
    {
       gainMode = mode;
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
          if (gainMode == AirspyDevice::Auto)
          {
-            if ((airspyResult = airspy_set_lna_agc(airspyHandle, tunerAgc)) != AIRSPY_SUCCESS)
-               log.warn("failed airspy_set_lna_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+            if ((deviceResult = airspy_set_lna_agc(deviceHandle, tunerAgc)) != AIRSPY_SUCCESS)
+               log.warn("failed airspy_set_lna_agc: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
-            if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
-               log.warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+            if ((deviceResult = airspy_set_mixer_agc(deviceHandle, mixerAgc)) != AIRSPY_SUCCESS)
+               log.warn("failed airspy_set_mixer_agc: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
-            return airspyResult;
+            return deviceResult;
          }
          else
          {
@@ -340,20 +339,20 @@ struct AirspyDevice::Impl
    {
       gainValue = value;
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
          if (gainMode == AirspyDevice::Linearity)
          {
-            if ((airspyResult = airspy_set_linearity_gain(airspyHandle, gainValue)) != AIRSPY_SUCCESS)
-               log.warn("failed airspy_set_linearity_gain: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+            if ((deviceResult = airspy_set_linearity_gain(deviceHandle, gainValue)) != AIRSPY_SUCCESS)
+               log.warn("failed airspy_set_linearity_gain: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
          }
          else if (gainMode == AirspyDevice::Sensitivity)
          {
-            if ((airspyResult = airspy_set_sensitivity_gain(airspyHandle, gainValue)) != AIRSPY_SUCCESS)
-               log.warn("failed airspy_set_linearity_gain: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+            if ((deviceResult = airspy_set_sensitivity_gain(deviceHandle, gainValue)) != AIRSPY_SUCCESS)
+               log.warn("failed airspy_set_linearity_gain: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
          }
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return 0;
@@ -366,12 +365,12 @@ struct AirspyDevice::Impl
       if (tunerAgc)
          gainMode = AirspyDevice::Auto;
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
-         if ((airspyResult = airspy_set_lna_agc(airspyHandle, tunerAgc)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_lna_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_set_lna_agc(deviceHandle, tunerAgc)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_lna_agc: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return 0;
@@ -384,12 +383,12 @@ struct AirspyDevice::Impl
       if (mixerAgc)
          gainMode = AirspyDevice::Auto;
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
-         if ((airspyResult = airspy_set_mixer_agc(airspyHandle, mixerAgc)) != AIRSPY_SUCCESS)
-            log.warn("failed airspy_set_mixer_agc: [{}] {}", {airspyResult, airspy_error_name((enum airspy_error) airspyResult)});
+         if ((deviceResult = airspy_set_mixer_agc(deviceHandle, mixerAgc)) != AIRSPY_SUCCESS)
+            log.warn("failed airspy_set_mixer_agc: [{}] {}", {deviceResult, airspy_error_name((enum airspy_error) deviceResult)});
 
-         return airspyResult;
+         return deviceResult;
       }
 
       return 0;
@@ -415,13 +414,13 @@ struct AirspyDevice::Impl
 
       uint32_t count, rates[256];
 
-      if (airspyHandle)
+      if (deviceHandle)
       {
          // get number of supported sample rates
-         airspy_get_samplerates(airspyHandle, &count, 0);
+         airspy_get_samplerates(deviceHandle, &count, 0);
 
          // get list of supported sample rates
-         airspy_get_samplerates(airspyHandle, rates, count);
+         airspy_get_samplerates(deviceHandle, rates, count);
 
          for (int i = 0; i < (int) count; i++)
          {
