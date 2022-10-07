@@ -520,7 +520,7 @@ int main(int argc, char *argv[])
 //   return startTest1(argc, argv);
 //   return startTest2(argc, argv);
 //   return startTest3(argc, argv);
-   return startTest4(argc, argv);
-//   return startApp(argc, argv);
+//   return startTest4(argc, argv);
+   return startApp(argc, argv);
 }
 
