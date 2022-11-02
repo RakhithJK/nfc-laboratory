@@ -588,6 +588,18 @@ int MiriDevice::setGainValue(int value)
    return impl->setGainValue(value);
 }
 
+int MiriDevice::biasTee() const
+{
+   return 0;
+}
+
+int MiriDevice::setBiasTee(int value)
+{
+   impl->log.warn("setBiasTee has no effect!");
+
+   return -1;
+}
+
 int MiriDevice::decimation() const
 {
    return impl->decimation;

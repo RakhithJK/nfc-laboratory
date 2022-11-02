@@ -100,10 +100,6 @@ class RealtekDevice : public RadioDevice
 
       int setMixerAgc(int value) override;
 
-      int biasTee() const override;
-
-      int setBiasTee(int value) override;
-
       int gainMode() const override;
 
       int setGainMode(int value) override;
@@ -111,6 +107,10 @@ class RealtekDevice : public RadioDevice
       int gainValue() const override;
 
       int setGainValue(int value) override;
+
+      int biasTee() const override;
+
+      int setBiasTee(int value) override;
 
       int decimation() const override;
 
